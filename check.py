@@ -140,8 +140,11 @@ def run(now=None, sleep=time.sleep):
                 state[s["id"]] = {"name": s["name"], "status": "up" if ok else "down", "since": iso(now)}
             state[s["id"]]["name"] = s["name"]
             lines.append(f"{s['name']}: {'up' if ok else 'still down (' + why + ')'}")
-    for gone in set(state) - {s["id"] for s in sites}:
+    for gone in set(state) - {s["id"] for s in sites}:       # a site taken off the page: close its open outage
         del state[gone]
+        for inc in incidents:
+            if inc["site"] == gone and not inc.get("end"):
+                inc["end"], inc["reason"] = iso(now), (inc.get("reason", "") + " (site removed from this page)").strip()
     incidents = incidents[-KEEP_INCIDENTS:]
     today = now.astimezone(IST).date()
     for back in (1, 0):                          # yesterday (final) and today (so far)

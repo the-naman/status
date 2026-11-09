@@ -1,7 +1,11 @@
 {
-  "_note": "Public sites shown on the status page. Only public addresses; never admin or test sites, never secrets.",
+  "_note": "Public sites shown on the status page. Only public, login-free sites; never admin, test or login-protected sites, never secrets.",
   "sites": [
-    {"id": "portfolio", "name": "Portfolio", "url": "https://kumarnaman.com/", "health": "https://kumarnaman.com/api/health"},
-    {"id": "prep", "name": "Interview prep", "url": "https://d.kumarnaman.com/"}
+    {
+      "id": "portfolio",
+      "name": "Portfolio",
+      "url": "https://kumarnaman.com/",
+      "health": "https://kumarnaman.com/api/health"
+    }
   ]
 }

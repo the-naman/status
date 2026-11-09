@@ -92,7 +92,8 @@
     });
 
     var list = document.getElementById("incidents");
-    var recent = incidents.slice().reverse().slice(0, 20);
+    var ids = {}; sites.forEach(function (s) { ids[s.id] = true; });
+    var recent = incidents.filter(function (i) { return ids[i.site]; }).reverse().slice(0, 20);
     if (recent.length) {
       list.textContent = ""; list.className = "";
       recent.forEach(function (inc) {

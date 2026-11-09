@@ -69,6 +69,16 @@ class CheckTests(unittest.TestCase):
         with open(os.path.join(self.d, "data", name)) as fh:
             return json.load(fh)
 
+    def test_removed_site_closes_its_outage(self):
+        self.f.code = 500
+        self.run_at(T0)
+        self.assertIsNone(self.data("incidents.json")[0]["end"])
+        with open(os.path.join(self.d, "sites.json"), "w") as fh:
+            json.dump({"sites": []}, fh)
+        self.run_at(T0 + dt.timedelta(minutes=15))
+        self.assertEqual(self.data("state.json"), {})
+        self.assertTrue(all(i["end"] for i in self.data("incidents.json")))
+
     def test_missing_data_folder_is_created(self):
         shutil.rmtree(os.path.join(self.d, "data"))
         changed, _ = self.run_at(T0)
