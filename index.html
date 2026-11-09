@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' https://api.github.com; img-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Site Status</title>
+<style>
+  :root { --bg:#f7f7f5; --card:#fff; --ink:#1d1d1b; --muted:#6b6b66; --line:#e4e3de; --up:#1f8a4c; --down:#c4362b; --part:#c98a12; --none:#d9d8d2; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#121212; --card:#1b1b1a; --ink:#ecebe6; --muted:#9a9993; --line:#2c2c2a; --none:#33332f; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:32px 16px 48px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:24px; }
+  .banner { border-radius:10px; padding:14px 16px; font-weight:600; margin-bottom:20px; color:#fff; background:var(--up); }
+  .banner.bad { background:var(--down); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:12px; }
+  .row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+  .name { font-weight:600; }
+  .st { font-size:13px; font-weight:600; }
+  .st.up { color:var(--up); } .st.down { color:var(--down); }
+  .bars { display:flex; gap:2px; margin:10px 0 6px; height:28px; }
+  .bars span { flex:1; border-radius:2px; background:var(--none); }
+  .bars span.u { background:var(--up); } .bars span.p { background:var(--part); } .bars span.d { background:var(--down); }
+  .meta { display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
+  h2 { font-size:16px; margin:28px 0 10px; }
+  .inc { border-left:3px solid var(--down); padding:4px 0 4px 10px; margin-bottom:10px; font-size:14px; }
+  .inc.done { border-color:var(--up); }
+  .muted { color:var(--muted); font-size:13px; }
+  footer { margin-top:32px; color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Site status</h1>
+  <div class="sub" id="checked">Checked every 15 minutes.</div>
+  <div class="banner" id="banner">Loading…</div>
+  <div id="sites"></div>
+  <h2>Recent incidents</h2>
+  <div id="incidents" class="muted">None in the last 90 days.</div>
+  <footer>Times in India Standard Time. Uptime is per day, from recorded outages. A site counts as down after two failed checks 20 seconds apart.</footer>
+</main>
+<script>
+(function () {
+  "use strict";
+  var IST = "Asia/Kolkata";
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function fmt(iso) {
+    try { return new Date(iso).toLocaleString("en-IN", { timeZone: IST, day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); }
+    catch (e) { return iso; }
+  }
+  function dur(a, b) {
+    var m = Math.max(1, Math.round(((b ? new Date(b) : new Date()) - new Date(a)) / 60000));
+    return m < 60 ? m + " min" : (m < 1440 ? Math.floor(m / 60) + " h " + (m % 60) + " min" : Math.floor(m / 1440) + " d " + Math.floor((m % 1440) / 60) + " h");
+  }
+  function istDay(d) { return new Intl.DateTimeFormat("en-CA", { timeZone: IST }).format(d); }
+  function get(path) { return fetch(path + "?t=" + Date.now(), { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(path); return r.json(); }); }
+
+  Promise.all([get("sites.json"), get("data/state.json"), get("data/incidents.json"), get("data/daily.json")]).then(function (res) {
+    var sites = res[0].sites || [], state = res[1] || {}, incidents = res[2] || [], daily = res[3] || {};
+    var down = sites.filter(function (s) { return (state[s.id] || {}).status === "down"; });
+    var banner = document.getElementById("banner");
+    banner.textContent = down.length ? (down.length === sites.length ? "All sites are down" : "Some sites are down") : "All sites are up";
+    if (down.length) banner.className = "banner bad";
+
+    var days = [], now = new Date();
+    for (var i = 89; i >= 0; i--) days.push(istDay(new Date(now.getTime() - i * 86400000)));
+    var box = document.getElementById("sites");
+    sites.forEach(function (s) {
+      var st = state[s.id] || { status: "up" };
+      var card = el("div", "card"), row = el("div", "row");
+      row.appendChild(el("span", "name", s.name));
+      row.appendChild(el("span", "st " + (st.status === "down" ? "down" : "up"),
+        st.status === "down" ? "Down since " + fmt(st.since) : "Up"));
+      card.appendChild(row);
+      var bars = el("div", "bars"), total = 0, n = 0;
+      days.forEach(function (d) {
+        var v = (daily[d] || {})[s.id], b = el("span", v == null ? "" : (v >= 99.9 ? "u" : (v >= 95 ? "p" : "d")));
+        b.title = d + (v == null ? ": no data" : ": " + v + "% up");
+        if (v != null) { total += v; n++; }
+        bars.appendChild(b);
+      });
+      card.appendChild(bars);
+      var meta = el("div", "meta");
+      meta.appendChild(el("span", null, "90 days ago"));
+      meta.appendChild(el("span", null, n ? (total / n).toFixed(2) + "% uptime" : "collecting data"));
+      meta.appendChild(el("span", null, "Today"));
+      card.appendChild(meta);
+      box.appendChild(card);
+    });
+
+    var list = document.getElementById("incidents");
+    var recent = incidents.slice().reverse().slice(0, 20);
+    if (recent.length) {
+      list.textContent = ""; list.className = "";
+      recent.forEach(function (inc) {
+        var d = el("div", "inc" + (inc.end ? " done" : ""));
+        d.appendChild(el("div", "name", (inc.name || inc.site) + (inc.end ? " - resolved" : " - ongoing")));
+        d.appendChild(el("div", "muted", fmt(inc.start) + " · " + dur(inc.start, inc.end) + (inc.reason ? " · " + inc.reason : "")));
+        list.appendChild(d);
+      });
+    }
+  }).catch(function () {
+    document.getElementById("banner").textContent = "Status data could not be loaded.";
+    document.getElementById("banner").className = "banner bad";
+  });
+
+  fetch("https://api.github.com/repos/the-naman/status/actions/workflows/check.yml/runs?per_page=1&status=completed",
+        { headers: { Accept: "application/vnd.github+json" } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) {
+      var run = j && j.workflow_runs && j.workflow_runs[0];
+      if (run) document.getElementById("checked").textContent = "Checked every 15 minutes · last check " + fmt(run.updated_at) + " IST";
+    }).catch(function () {});
+})();
+</script>
+</body>
+</html>

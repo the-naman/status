@@ -1,0 +1,29 @@
+# Tests for check.py on every push.
+name: CI
+
+on:
+  push:
+    paths-ignore: ['data/**']
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Get the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Tests
+        run: python3 -E -s -m unittest -v test_check
+      - name: sites.json is valid and public-only
+        run: python3 -I -c "import json; s=json.load(open('sites.json'))['sites']; assert s and all(x['url'].startswith('https://') for x in s); print(len(s), 'sites')"

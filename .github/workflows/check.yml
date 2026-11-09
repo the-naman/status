@@ -1,0 +1,38 @@
+# Public status checks every 15 minutes (Automation M4, layer 2). No secrets: this repo is public.
+# Commits data/ only when something changed (and once a day for the daily uptime), so history = incident log.
+name: Status check
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: status-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write      # commit data/ when it changed
+    steps:
+      - name: Get the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: true   # this job's own short-lived token, to push data/
+
+      - name: Check the sites
+        run: python3 -I check.py
+
+      - name: Save changes
+        run: |
+          git add data
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Status $(date -u +%Y-%m-%dT%H:%MZ)"
+          for _ in 1 2 3; do git pull -q --rebase origin main && git push -q origin HEAD:main && exit 0; sleep 5; done
+          exit 1
