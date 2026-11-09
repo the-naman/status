@@ -69,6 +69,11 @@ class CheckTests(unittest.TestCase):
         with open(os.path.join(self.d, "data", name)) as fh:
             return json.load(fh)
 
+    def test_missing_data_folder_is_created(self):
+        shutil.rmtree(os.path.join(self.d, "data"))
+        changed, _ = self.run_at(T0)
+        self.assertIn("state.json", changed)
+
     def test_all_up_then_nothing_changes(self):
         changed, _ = self.run_at(T0)
         self.assertIn("state.json", changed)

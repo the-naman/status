@@ -30,7 +30,7 @@ jobs:
 
       - name: Save changes
         run: |
-          git add data
+          git add --force data      # --force: even if a global ignore rule lists data/
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
             commit -q -m "Status $(date -u +%Y-%m-%dT%H:%MZ)"

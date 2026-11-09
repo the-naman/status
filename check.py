@@ -84,6 +84,7 @@ def load(name, default):
 
 
 def save(name, obj):
+    os.makedirs(DATA, exist_ok=True)              # a fresh clone may not have data/ yet
     path = os.path.join(DATA, name)
     text = json.dumps(obj, indent=1, sort_keys=True) + "\n"
     try:
