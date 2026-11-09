@@ -3,11 +3,5 @@
   "name": "Portfolio",
   "since": "2026-11-09T09:37:08Z",
   "status": "up"
- },
- "prep": {
-  "name": "Interview prep",
-  "reason": "HTTP 401",
-  "since": "2026-11-09T09:37:08Z",
-  "status": "down"
  }
 }
